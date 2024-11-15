@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hand.training.mapper.InvoiceHeaderMapper">
+
+    <!-- LIST -->
+    <select id="list" resultMap="InvoiceHeaderResultMap">
+        SELECT ih.*, il.*
+        FROM invoice_header ih
+        LEFT JOIN invoice_line il ON ih.invoice_header_id = il.invoice_header_id
+        WHERE ih.del_flag = 0
+        <if test="invoiceNumber != null">
+            AND ih.invoice_number = #{invoiceNumber}
+        </if>
+        <if test="status != null">
+            AND ih.status = #{status}
+        </if>
+        <if test="invoiceType != null">
+            AND ih.invoice_type = #{invoiceType}
+        </if>
+        ORDER BY ih.creation_date DESC
+    </select>
+
+    <!--    DETAIL-->
+    <select id="detail" resultMap="InvoiceHeaderResultMap">
+        SELECT ih.*, il.*
+        FROM invoice_header ih
+        LEFT JOIN invoice_line il ON ih.invoice_header_id = il.invoice_header_id
+        WHERE ih.invoice_header_id = #{invoiceHeaderId}
+    </select>
+
+    <!--    REMOVE-->
+    <delete id="removeInvoiceLines">
+        <!--        remove invoice line-->
+        DELETE FROM invoice_line
+        WHERE invoice_header_id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>;
+    </delete>
+    <update id="removeInvoiceHeaders">
+        <!--        remove invoice header-->
+        UPDATE invoice_header
+        SET del_flag = 1
+        WHERE invoice_header_id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>;
+    </update>
+
+    <!--Save and update-->
+    <insert id="saveUpdate" useGeneratedKeys="true" keyProperty="invoiceHeaderId">
+        INSERT INTO invoice_header (
+        invoice_header_id,
+        invoice_number, status, invoice_type, total_amount, del_flag, remark,
+        creation_date, created_by, last_updated_by, last_update_date
+        )
+        VALUES (
+        #{invoiceHeaderId},
+        #{invoiceNumber}, #{status}, #{invoiceType}, #{totalAmount}, #{delFlag}, #{remark},
+        NOW(), #{createdBy}, #{lastUpdatedBy}, NOW()
+        )
+        ON DUPLICATE KEY UPDATE
+        status = #{status},
+        invoice_type = #{invoiceType},
+        total_amount = #{totalAmount},
+        del_flag = #{delFlag},
+        remark = #{remark},
+        last_updated_by = #{lastUpdatedBy},
+        last_update_date = NOW();
+    </insert>
+
+    <select id="findById" resultMap="InvoiceHeaderResultMap">
+        SELECT * FROM invoice_header
+        WHERE invoice_header_id = #{invoiceHeaderId}
+    </select>
+
+    <update id="updateTotal">
+        UPDATE invoice_header
+        SET total_amount = #{total}, last_update_date = NOW()
+        WHERE invoice_header_id = #{invoiceHeaderId}
+    </update>
+
+    <!-- ResultMap for mapping invoice header and invoice line -->
+    <resultMap id="InvoiceHeaderResultMap" type="com.hand.training.entity.InvoiceHeader">
+        <id property="invoiceHeaderId" column="invoice_header_id"/>
+        <result property="invoiceNumber" column="invoice_number"/>
+        <result property="status" column="status"/>
+        <result property="invoiceType" column="invoice_type"/>
+        <result property="totalAmount" column="total_amount"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="remark" column="remark"/>
+        <result property="creationDate" column="creation_date"/>
+        <result property="createdBy" column="created_by"/>
+        <result property="lastUpdatedBy" column="last_updated_by"/>
+        <result property="lastUpdateDate" column="last_update_date"/>
+
+        <collection property="invoiceLines" ofType="com.hand.training.entity.InvoiceLine">
+            <id property="invoiceLineId" column="invoice_line_id"/>
+            <result property="invoiceHeaderId" column="invoice_header_id"/>
+            <result property="itemNumber" column="item_number"/>
+            <result property="itemDescription" column="item_description"/>
+            <result property="unitPrice" column="unit_price"/>
+            <result property="quantity" column="quantity"/>
+            <result property="totalAmount" column="total_amount"/>
+            <result property="remark" column="line_remark"/>
+            <result property="creationDate" column="line_creation_date"/>
+            <result property="createdBy" column="line_created_by"/>
+            <result property="lastUpdatedBy" column="line_last_updated_by"/>
+            <result property="lastUpdateDate" column="line_last_update_date"/>
+        </collection>
+    </resultMap>
+</mapper>
